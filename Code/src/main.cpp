@@ -13,11 +13,22 @@
     See the License for the specific language governing permissions and
     limitations under the License.
 */
+#include <stdint.h>
+#include <atomic>
+#include <stdlib.h>
+#include <string.h>
 
 #include "ch.hpp"
 #include "hal.h"
+
+#include "shell.h"
+#include "chprintf.h"
+
+
 #include "rt_test_root.h"
 #include "oslib_test_root.h"
+#include "usbcfg.h"
+#include "ringBuffer.hpp"
 
 using namespace chibios_rt;
 
@@ -25,6 +36,8 @@ using namespace chibios_rt;
  * Message server thread class. It receives messages and does nothing except
  * reply after the specified time.
  */
+#define usb1 (BaseSequentialStream*)&SDU1
+
 class MessageServerThread : public BaseStaticThread<256> {
 
 protected:
@@ -118,11 +131,68 @@ static const seqop_t msg_sequence[] =
   {GOTO,        0}
 };
 
-/*
+/* 
  * Sequencer thread class. It can drive LEDs or other output pins.
  * Any sequencer is just an instance of this class, all the details are
  * totally encapsulated and hidden to the application level.
  */
+class usbTransmitThread : public BaseStaticThread<128>{
+  public:
+  usbTransmitThread(ByteBuffer* rxUSB, USBDriver* drvUSB) : BaseStaticThread<128>(), mRxUSB(rxUSB),mDrvUsb(drvUSB){
+  
+  }
+  protected:
+    void main(void) override {
+      
+      while (true){
+        uint32_t bytesReceived = 0;
+        if (mRxUSB->available()){
+          if (mRxUSB->block()){
+            chnWriteTimeout(&SDU1, mRxUSB->readptr(bytesReceived), bytesReceived, TIME_IMMEDIATE);
+            mRxUSB->clear();
+            mRxUSB->unblock();
+          }
+        }
+        sleep_ms(1);
+      }
+      
+    }
+  private:
+  void sleep_ms(sysinterval_t interval){
+    sleep(TIME_MS2I(interval));
+  }
+  ByteBuffer* mRxUSB;
+  USBDriver* mDrvUsb;
+};
+class usbReceiveThread : public BaseStaticThread<128>{
+  public:
+  usbReceiveThread(ByteBuffer* rxUSB, USBDriver* drvUSB) : BaseStaticThread<128>(), mRxUSB(rxUSB),mDrvUsb(drvUSB){
+  
+  }
+  protected:
+    void main(void) override {
+      
+      while (true){
+        if (mDrvUsb->state == USB_ACTIVE){
+          if (mRxUSB->block()){
+            uint8_t buf[100];
+            uint32_t bytesReceived = chnReadTimeout(&SDU1, buf, sizeof(buf),TIME_IMMEDIATE);
+            if (bytesReceived)
+            mRxUSB->write(buf,bytesReceived);
+            mRxUSB->unblock();
+          }
+        }
+        sleep_ms(1);
+      }
+      
+    }
+  private:
+  void sleep_ms(sysinterval_t interval){
+    sleep(TIME_MS2I(interval));
+  }
+  ByteBuffer* mRxUSB;
+  USBDriver* mDrvUsb;
+};
 class SequencerThread : public BaseStaticThread<128> {
 private:
   const seqop_t *base, *curr;                   // Thread local variables.
@@ -163,37 +233,53 @@ public:
   }
 };
 
-/*
- * Tester thread class. This thread executes the test suite.
- */
-class TesterThread : public BaseStaticThread<256> {
 
-protected:
-  void main(void) override {
 
-    setName("tester");
-
-    test_execute((BaseSequentialStream *)&SD2, &rt_test_suite);
-    test_execute((BaseSequentialStream *)&SD2, &oslib_test_suite);
-    exit(chtest.global_fail);
+static SequencerThread blinker1(LED3_sequence);
+static SequencerThread sender1(msg_sequence);
+class MainThread : public BaseStaticThread<1024> {
+  public:
+    MainThread() : BaseStaticThread<1024>(){
+  
   }
+  protected:
+    void main(void) override {
+      int32_t test1 = 34;
+      ByteBuffer rxUSB(100);
+      sduObjectInit(&SDU1);
+      sduStart(&SDU1, &serusbcfg);
 
-public:
-  TesterThread(void) : BaseStaticThread<256>() {
-  }
+      usbDisconnectBus(serusbcfg.usbp);
+      BaseThread::sleep(TIME_MS2I(1000));
+      usbStart(serusbcfg.usbp, &usbcfg);
+      usbConnectBus(serusbcfg.usbp);
+
+      
+      blinker1.start(NORMALPRIO + 20);
+
+      usbTransmitThread usbTransmit(&rxUSB, serusbcfg.usbp);
+      usbReceiveThread usbReceive(&rxUSB, serusbcfg.usbp);
+
+      usbTransmit.start(NORMALPRIO + 10);
+      usbReceive.start(NORMALPRIO + 10);
+      while(1){
+        test1++;
+        BaseThread::sleep(TIME_MS2I(1000));
+      }
+    }
+  private:
+    void sleep_ms(sysinterval_t interval){
+      sleep(TIME_MS2I(interval));
+    }
 };
 
-/* Static threads instances.*/
-static TesterThread tester;
-static MessageServerThread server_thread;
-static SequencerThread blinker1(LED3_sequence);
-static SequencerThread blinker2(LED4_sequence);
-static SequencerThread blinker3(LED5_sequence);
-static SequencerThread blinker4(LED6_sequence);
-static SequencerThread sender1(msg_sequence);
 /*
  * Application entry point.
  */
+/* Static threads instances.*/
+static MainThread mainThread;
+static MessageServerThread server_thread;
+
 int32_t testGG = 34;
 int main(void) {
 
@@ -207,38 +293,15 @@ int main(void) {
   halInit();
   System::init();
   testGG++;
-  /*
-   * Activates the serial driver 2 using the driver default configuration.
-   * PA2(TX) and PA3(RX) are routed to USART2.
-   */
-  sdStart(&SD2, NULL);
-  palSetPadMode(GPIOA, 2, PAL_MODE_ALTERNATE(7));
-  palSetPadMode(GPIOA, 3, PAL_MODE_ALTERNATE(7));
-
-  /*
-   * Starting the message server thread, storing the returned reference.
-   */
+  
   sref = server_thread.start(NORMALPRIO + 20);
 
-  /*
-   * Starts several instances of the SequencerThread class, each one operating
-   * on a different sequence.
-   */
-  blinker1.start(NORMALPRIO + 10);
-  blinker2.start(NORMALPRIO + 10);
-  blinker3.start(NORMALPRIO + 10);
-  blinker4.start(NORMALPRIO + 10);
-  sender1.start(NORMALPRIO + 10);
+  mainThread.start(NORMALPRIO + 1);
 
-  /*
-   * Serves timer events.
-   */
   while (true) {
-    if (palReadPad(GPIOA, GPIOA_BUTTON)) {
-      ThreadReference tref = tester.start(NORMALPRIO);
-      tref.wait();
-    };
-    BaseThread::sleep(TIME_MS2I(500));
+    testGG++;
+   
+    BaseThread::sleep(TIME_MS2I(1000));
   }
 
   return 0;

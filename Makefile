@@ -5,7 +5,7 @@
 
 # Compiler options here.
 ifeq ($(USE_OPT),)
-  USE_OPT = -O2 -ggdb -fomit-frame-pointer -falign-functions=16
+  USE_OPT = -Og -ggdb -fomit-frame-pointer -falign-functions=16
 endif
 
 # C specific options here (added to USE_OPT).
@@ -114,6 +114,8 @@ include $(CHIBIOS)/tools/mk/autobuild.mk
 include $(CHIBIOS)/os/test/test.mk
 include $(CHIBIOS)/test/rt/rt_test.mk
 include $(CHIBIOS)/test/oslib/oslib_test.mk
+include $(CHIBIOS)/os/hal/lib/streams/streams.mk
+include $(CHIBIOS)/os/various/shell/shell.mk
 include $(CHIBIOS)/os/various/cpp_wrappers/chcpp.mk
 
 # Define linker script file here
@@ -123,12 +125,17 @@ LDSCRIPT= $(STARTUPLD)/STM32F405xG.ld
 # setting.
 CSRC = $(ALLCSRC) \
        $(TESTSRC) \
-       Code/src/board.c
+       Code/src/board.c \
+       Code/src/usbcfg.c 
 
 # C++ sources that can be compiled in ARM or THUMB mode depending on the global
 # setting.
 CPPSRC = $(ALLCPPSRC) \
-         Code/src/main.cpp 
+         Code/src/main.cpp \
+         Libs/utils/src/ringBuffer.cpp 
+         #Libs/utils/src/slcan.cpp 
+    
+
 # List ASM source files here.
 ASMSRC = $(ALLASMSRC)
 
@@ -137,8 +144,8 @@ ASMXSRC = $(ALLXASMSRC)
 
 # Inclusion directories.
 INCDIR = $(CONFDIR) $(ALLINC) $(TESTINC) \
-          Code/inc
-
+          Code/inc Libs/utils/inc 
+#$(info VAR is $(INCDIR))
 #ALLCSRC += Libs/chibiOS/src/board.c
 #ALLINC  += Libs/chibiOS/inc
 
