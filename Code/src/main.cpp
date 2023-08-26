@@ -13,22 +13,7 @@
     See the License for the specific language governing permissions and
     limitations under the License.
 */
-#include <stdint.h>
-#include <atomic>
-#include <stdlib.h>
-#include <string.h>
-
-#include "ch.hpp"
-#include "hal.h"
-
-#include "shell.h"
-#include "chprintf.h"
-
-
-#include "rt_test_root.h"
-#include "oslib_test_root.h"
-#include "usbcfg.h"
-#include "ringBuffer.hpp"
+#include "main.h"
 
 using namespace chibios_rt;
 
@@ -37,29 +22,6 @@ using namespace chibios_rt;
  * reply after the specified time.
  */
 #define usb1 (BaseSequentialStream*)&SDU1
-
-class MessageServerThread : public BaseStaticThread<256> {
-
-protected:
-  void main(void) override {
-
-    setName("server");
-
-    while (true) {
-      ThreadReference sender = waitMessage();
-      time_msecs_t msecs = (time_msecs_t)sender.getMessage();
-      sleep(TIME_MS2I(msecs));
-      sender.releaseMessage(0);
-    }
-  }
-
-public:
-  MessageServerThread(void) : BaseStaticThread<256>() {
-  }
-};
-
-/* Reference to the server thread.*/
-static ThreadReference sref;
 
 /*
  * LED blink sequences.
@@ -84,50 +46,72 @@ typedef struct {
 } seqop_t;
 
 // Flashing sequence for LED3.
-static const seqop_t LED3_sequence[] =
+static const seqop_t ledGreen1[] =
 {
-  {BITSET,      LINE_LED13},
-  {SLEEP,       800},
-  {BITCLEAR,    LINE_LED13},
-  {SLEEP,       200},
+  {BITCLEAR,    LINE_LED_GREEN_1},
+  {SLEEP,       0},
+  {BITSET,      LINE_LED_GREEN_1},
+  {SLEEP,       100},
+  {BITCLEAR,    LINE_LED_GREEN_1},
+  {SLEEP,       400},
   {GOTO,        0}
 };
 
 // Flashing sequence for LED4.
-static const seqop_t LED4_sequence[] =
+static const seqop_t ledRed1[] =
 {
-  {BITSET,      LINE_LED4},
-  {SLEEP,       600},
-  {BITCLEAR,    LINE_LED4},
-  {SLEEP,       400},
+  {BITCLEAR,    LINE_LED_RED_1},
+  {SLEEP,       50},
+  {BITSET,      LINE_LED_RED_1},
+  {SLEEP,       100},
+  {BITCLEAR,    LINE_LED_RED_1},
+  {SLEEP,       350},
   {GOTO,        0}
 };
 
 // Flashing sequence for LED5.
-static const seqop_t LED5_sequence[] =
+static const seqop_t ledBlue1[] =
 {
-  {BITSET,      LINE_LED5},
-  {SLEEP,       400},
-  {BITCLEAR,    LINE_LED5},
-  {SLEEP,       600},
+  {BITCLEAR,    LINE_LED_BLUE_1},
+  {SLEEP,       100},
+  {BITSET,      LINE_LED_BLUE_1},
+  {SLEEP,       100},
+  {BITCLEAR,    LINE_LED_BLUE_1},
+  {SLEEP,       300},
   {GOTO,        0}
 };
 
 // Flashing sequence for LED6.
-static const seqop_t LED6_sequence[] =
+static const seqop_t ledYellow1[] =
 {
-  {BITSET,      LINE_LED6},
-  {SLEEP,       200},
-  {BITCLEAR,    LINE_LED6},
-  {SLEEP,       800},
+  {BITCLEAR,    LINE_LED_YELLOW_1},
+  {SLEEP,       150},
+  {BITSET,      LINE_LED_YELLOW_1},
+  {SLEEP,       100},
+  {BITCLEAR,    LINE_LED_YELLOW_1},
+  {SLEEP,       250},
   {GOTO,        0}
 };
 
-// Message sequence.
-static const seqop_t msg_sequence[] =
+static const seqop_t ledWhite1[] =
 {
-  {MESSAGE,     50},
-  {SLEEP,       1000},
+  {BITCLEAR,    LINE_LED_WHITE_1},
+  {SLEEP,       200},
+  {BITSET,      LINE_LED_WHITE_1},
+  {SLEEP,       100},
+  {BITCLEAR,    LINE_LED_WHITE_1},
+  {SLEEP,       200},
+  {GOTO,        0}
+};
+
+static const seqop_t ledGreen2[] =
+{
+  {BITCLEAR,    LINE_LED_GREEN_2},
+  {SLEEP,       250},
+  {BITSET,      LINE_LED_GREEN_2},
+  {SLEEP,       100},
+  {BITCLEAR,    LINE_LED_GREEN_2},
+  {SLEEP,       150},
   {GOTO,        0}
 };
 
@@ -136,12 +120,12 @@ static const seqop_t msg_sequence[] =
  * Any sequencer is just an instance of this class, all the details are
  * totally encapsulated and hidden to the application level.
  */
-class usbTransmitThread : public BaseStaticThread<128>{
-  public:
-  usbTransmitThread(ByteBuffer* rxUSB, USBDriver* drvUSB) : BaseStaticThread<128>(), mRxUSB(rxUSB),mDrvUsb(drvUSB){
+class usbTransmitThread : public CustomizedThread<128>{
+public:
+  usbTransmitThread(ByteBuffer* rxUSB, USBDriver* drvUSB) : CustomizedThread<128>(), mRxUSB(rxUSB),mDrvUsb(drvUSB){
   
   }
-  protected:
+protected:
     void main(void) override {
       
       while (true){
@@ -157,19 +141,16 @@ class usbTransmitThread : public BaseStaticThread<128>{
       }
       
     }
-  private:
-  void sleep_ms(sysinterval_t interval){
-    sleep(TIME_MS2I(interval));
-  }
+private:
   ByteBuffer* mRxUSB;
   USBDriver* mDrvUsb;
 };
-class usbReceiveThread : public BaseStaticThread<128>{
-  public:
-  usbReceiveThread(ByteBuffer* rxUSB, USBDriver* drvUSB) : BaseStaticThread<128>(), mRxUSB(rxUSB),mDrvUsb(drvUSB){
+class usbReceiveThread : public CustomizedThread<128>{
+public:
+  usbReceiveThread(ByteBuffer* rxUSB, USBDriver* drvUSB) : CustomizedThread<128>(), mRxUSB(rxUSB),mDrvUsb(drvUSB){
   
   }
-  protected:
+protected:
     void main(void) override {
       
       while (true){
@@ -186,29 +167,29 @@ class usbReceiveThread : public BaseStaticThread<128>{
       }
       
     }
-  private:
-  void sleep_ms(sysinterval_t interval){
-    sleep(TIME_MS2I(interval));
-  }
+private:
   ByteBuffer* mRxUSB;
   USBDriver* mDrvUsb;
 };
-class SequencerThread : public BaseStaticThread<128> {
+class SequencerThread : public BaseStaticThread<256> {
 private:
   const seqop_t *base, *curr;                   // Thread local variables.
 
 protected:
   void main(void) override {
-
     setName("sequencer");
-
+    systime_t tNow = 0;
     while (true) {
       switch(curr->action) {
       case SLEEP:
+        //sleepUntil(TIME_MS2I(curr->value) + tNow);
+        if (curr->value == 0) break;
         sleep(TIME_MS2I(curr->value));
         break;
       case GOTO:
         curr = &base[curr->value];
+        if (curr->value == 0)
+          tNow = System::getTime();
         continue;
       case STOP:
         return;
@@ -219,7 +200,7 @@ protected:
         palSetLine(curr->line);
         break;
       case MESSAGE:
-        sref.sendMessage(curr->msg);
+      
         break;
       }
       curr++;
@@ -227,7 +208,7 @@ protected:
   }
 
 public:
-  SequencerThread(const seqop_t *sequence) : BaseStaticThread<128>() {
+  SequencerThread(const seqop_t *sequence) : BaseStaticThread<256>() {
 
     base = curr = sequence;
   }
@@ -235,8 +216,13 @@ public:
 
 
 
-static SequencerThread blinker1(LED3_sequence);
-static SequencerThread sender1(msg_sequence);
+static SequencerThread threadLightGreen1(ledGreen1);
+static SequencerThread threadLightRed(ledRed1);
+static SequencerThread threadLightBlue(ledBlue1);
+static SequencerThread threadLightYellow(ledYellow1);
+static SequencerThread threadLightWhite(ledWhite1);
+static SequencerThread threadLightGreen2(ledGreen2);
+
 class MainThread : public BaseStaticThread<1024> {
   public:
     MainThread() : BaseStaticThread<1024>(){
@@ -255,13 +241,25 @@ class MainThread : public BaseStaticThread<1024> {
       usbConnectBus(serusbcfg.usbp);
 
       
-      blinker1.start(NORMALPRIO + 20);
+      threadLightGreen1.start(NORMALPRIO + 20);
+      threadLightRed.start(NORMALPRIO + 20);
+      threadLightBlue.start(NORMALPRIO + 20);
+      threadLightYellow.start(NORMALPRIO + 20);
+      threadLightWhite.start(NORMALPRIO + 20);
+      threadLightGreen2.start(NORMALPRIO + 20);
 
       usbTransmitThread usbTransmit(&rxUSB, serusbcfg.usbp);
       usbReceiveThread usbReceive(&rxUSB, serusbcfg.usbp);
 
       usbTransmit.start(NORMALPRIO + 10);
       usbReceive.start(NORMALPRIO + 10);
+
+      /* palSetLine(LINE_LED_GREEN_1);
+      palSetLine(LINE_LED_RED_1);
+      palSetLine(LINE_LED_BLUE_1);
+      palSetLine(LINE_LED_YELLOW_1);
+      palSetLine(LINE_LED_WHITE_1);
+      palSetLine(LINE_LED_GREEN_2); */
       while(1){
         test1++;
         BaseThread::sleep(TIME_MS2I(1000));
@@ -278,7 +276,6 @@ class MainThread : public BaseStaticThread<1024> {
  */
 /* Static threads instances.*/
 static MainThread mainThread;
-static MessageServerThread server_thread;
 
 int32_t testGG = 34;
 int main(void) {
@@ -294,7 +291,6 @@ int main(void) {
   System::init();
   testGG++;
   
-  sref = server_thread.start(NORMALPRIO + 20);
 
   mainThread.start(NORMALPRIO + 1);
 
