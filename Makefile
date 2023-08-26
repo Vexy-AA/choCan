@@ -146,6 +146,8 @@ ASMXSRC = $(ALLXASMSRC)
 INCDIR = $(CONFDIR) $(ALLINC) $(TESTINC) \
           Code/inc Libs/utils/inc 
 #$(info VAR is $(INCDIR))
+#$(info VAR is $(ALLCSRC))
+#$(info VAR is $(ALLCPPSRC))
 #ALLCSRC += Libs/chibiOS/src/board.c
 #ALLINC  += Libs/chibiOS/inc
 
