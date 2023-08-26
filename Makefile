@@ -5,7 +5,7 @@
 
 # Compiler options here.
 ifeq ($(USE_OPT),)
-  USE_OPT = -Og -ggdb -fomit-frame-pointer -falign-functions=16
+  USE_OPT = -Og -ggdb -fomit-frame-pointer -falign-functions=16 -lstdc++
 endif
 
 # C specific options here (added to USE_OPT).
@@ -15,7 +15,7 @@ endif
 
 # C++ specific options here (added to USE_OPT).
 ifeq ($(USE_CPPOPT),)
-  USE_CPPOPT = -std=gnu++11 -fno-exceptions -fno-rtti
+  USE_CPPOPT = -std=gnu++11 -fno-exceptions -fno-rtti 
 endif
 
 # Enable this if you want the linker to remove unused code and data.
@@ -132,7 +132,8 @@ CSRC = $(ALLCSRC) \
 # setting.
 CPPSRC = $(ALLCPPSRC) \
          Code/src/main.cpp \
-         Libs/utils/src/ringBuffer.cpp 
+         Libs/utils/src/ringBuffer.cpp  \
+         Code/src/threads.cpp
          #Libs/utils/src/slcan.cpp 
     
 

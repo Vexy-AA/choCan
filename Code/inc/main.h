@@ -21,6 +21,7 @@
 #include "usbcfg.h"
 #include "ringBuffer.hpp"
 
-#include "threads.h"
+#include "threads.hpp"
 
-#include "chdebug.h"
+//#include "chdebug.h"
+//#include "deviceSpecific.hpp"

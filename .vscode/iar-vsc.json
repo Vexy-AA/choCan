@@ -1,0 +1,18 @@
+{
+  "workspace": {
+    "path": "${workspaceFolder}\\Modules\\chibiOS\\demos\\STM32\\RT-STM32F303-DISCOVERY\\iar\\ch.eww"
+  },
+  "workspaces": {
+    "${workspaceFolder}\\Modules\\chibiOS\\demos\\STM32\\RT-STM32F303-DISCOVERY\\iar\\ch.eww": {
+      "configs": {
+        "${workspaceFolder}\\Modules\\chibiOS\\demos\\STM32\\RT-STM32F303-DISCOVERY\\iar\\ch.ewp": "Debug"
+      },
+      "selected": {
+        "path": "${workspaceFolder}\\Modules\\chibiOS\\demos\\STM32\\RT-STM32F303-DISCOVERY\\iar\\ch.ewp"
+      }
+    }
+  },
+  "workbench": {
+    "path": "D:\\\\Program Files\\\\IAR Systems\\\\Embedded Workbench 9.0"
+  }
+}
