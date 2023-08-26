@@ -31,6 +31,16 @@
 #define _CHIBIOS_RT_CONF_
 #define _CHIBIOS_RT_CONF_VER_7_0_
 
+#define CH_DBG_STATISTICS           TRUE
+#define CH_DBG_SYSTEM_STATE_CHECK   TRUE        
+#define CH_DBG_ENABLE_CHECKS        TRUE    
+#define CH_DBG_ENABLE_ASSERTS       TRUE    
+#define CH_DBG_TRACE_MASK           TRUE
+#define CH_DBG_TRACE_BUFFER_SIZE    TRUE        
+#define CH_DBG_ENABLE_STACK_CHECK   TRUE        
+#define CH_DBG_FILL_THREA           TRUE
+#define CH_DBG_THREADS_PROFILING    TRUE        
+#define CH_CFG_ST_TIMEDELTA 0
 /*===========================================================================*/
 /**
  * @name System settings
