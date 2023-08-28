@@ -15,39 +15,42 @@ void usbTransmitThread::main(void){
         }
       }
       sleep_ms(1);
+      stackUsage();
     }
 }
 
 void usbReceiveThread::main(void){
   setName("usbRxThread");
   while (true){
-  if (mDrvUsb->state == USB_ACTIVE){
-      if (mRxUSB->block()){
-      uint8_t buf[100];
-      uint32_t bytesReceived = chnReadTimeout(&SDU1, buf, sizeof(buf),TIME_IMMEDIATE);
-      if (bytesReceived){
-          mLeds.on(tPinNames::ledGreen,1,TIME_I2MS(System::getTime()));
-          mRxUSB->write(buf,bytesReceived);
-      }
-      mRxUSB->unblock();
-      }
-  }
-  sleep_ms(1);
+    if (mDrvUsb->state == USB_ACTIVE){
+        if (mRxUSB->block()){
+        uint8_t buf[100];
+        uint32_t bytesReceived = chnReadTimeout(&SDU1, buf, sizeof(buf),TIME_IMMEDIATE);
+        if (bytesReceived){
+            mLeds.on(tPinNames::ledGreen,1,TIME_I2MS(System::getTime()));
+            mRxUSB->write(buf,bytesReceived);
+        }
+        mRxUSB->unblock();
+        }
+    }
+    sleep_ms(1);
+    stackUsage();
   }
 }
 
 void ledsUpdateThread::main(void){
   setName("ledThread");
   while (true){
-  mLeds.clock(TIME_I2MS(System::getTime()));
-  sleep_ms(1);
+    mLeds.clock(TIME_I2MS(System::getTime()));
+    sleep_ms(1);
+    stackUsage();
   }
     
 }
 
 void can1ReceiveThread::main(void){
   while(true){
-    
+    stackUsage();
   }
   /* setName("can1RxThread");
   event_listener_t el;
@@ -66,7 +69,7 @@ void can1ReceiveThread::main(void){
 void can1TransmitThread::main(void){
   setName("can1TxThread");
   while(true){
-    
+    stackUsage();
   }
 }
 

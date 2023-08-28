@@ -56,8 +56,7 @@ class MainThread : public BaseStaticThread<16384> {
       //canStart(&CAND1, &cancfg1000);
       //canStart(&CAND2, &cancfg1000);
 
-      can1ReceiveThread can11111rx;
-      can11111rx.setPointers(&rxCAN, &leds);
+      //can1ReceiveThread can11111rx(&rxCAN, leds);
       //can1Rx.start(NORMALPRIO + 5);
       /*--------- USB -----------*/
       sduObjectInit(&SDU1);
