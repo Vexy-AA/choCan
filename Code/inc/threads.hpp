@@ -91,4 +91,39 @@ private:
 };
 
 
+class can1ReceiveThread : public CustomizedThread<512>{
+public:
+    can1ReceiveThread() : 
+        CustomizedThread<512>(){
+  
+    }
+    void setPointers(ObjectBuffer<CANRxFrame>* rxCAN,
+      STM32F405::Pins<6>* leds){
+        mRxCAN = rxCAN;
+        mLeds = leds;
+      }
+protected:
+    void main(void) override;
+private:
+    ObjectBuffer<CANRxFrame>* mRxCAN;
+    STM32F405::Pins<6>* mLeds;
+};
+
+class can1TransmitThread : public CustomizedThread<128>{
+public:
+    can1TransmitThread(
+      ObjectBuffer<CANTxFrame>* txCAN,
+      STM32F405::Pins<6>& leds) : 
+        CustomizedThread<128>(), 
+        mTxCAN(txCAN),
+        mLeds(leds){
+  
+    }
+protected:
+    void main(void) override;
+private:
+    ObjectBuffer<CANTxFrame>* mTxCAN;
+    STM32F405::Pins<6>& mLeds;
+};
+
 }

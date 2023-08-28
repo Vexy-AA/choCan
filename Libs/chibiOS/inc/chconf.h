@@ -38,7 +38,7 @@
 #define CH_DBG_TRACE_MASK           TRUE
 #define CH_DBG_TRACE_BUFFER_SIZE    TRUE        
 #define CH_DBG_ENABLE_STACK_CHECK   TRUE        
-#define CH_DBG_FILL_THREA           TRUE
+#define CH_DBG_FILL_THREADS         TRUE
 #define CH_DBG_THREADS_PROFILING    TRUE        
 #define CH_CFG_ST_TIMEDELTA 0
 /*===========================================================================*/

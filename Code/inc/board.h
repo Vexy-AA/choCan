@@ -457,8 +457,8 @@
                                      PIN_OTYPE_PUSHPULL(GPIOB_PIN5) |       \
                                      PIN_OTYPE_OPENDRAIN(GPIOB_SCL) |       \
                                      PIN_OTYPE_PUSHPULL(GPIOB_PIN7) |       \
-                                     PIN_OTYPE_OPENDRAIN(GPIOB_CAN1_RX) |       \
-                                     PIN_OTYPE_OPENDRAIN(GPIOB_CAN1_TX) |       \
+                                     PIN_OTYPE_PUSHPULL(GPIOB_CAN1_RX) |       \
+                                     PIN_OTYPE_PUSHPULL(GPIOB_CAN1_TX) |       \
                                      PIN_OTYPE_PUSHPULL(GPIOB_CLK_IN) |     \
                                      PIN_OTYPE_PUSHPULL(GPIOB_PIN11) |      \
                                      PIN_OTYPE_OPENDRAIN(GPIOB_CAN2_RX) |      \

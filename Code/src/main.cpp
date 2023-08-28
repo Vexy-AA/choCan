@@ -23,17 +23,43 @@ using namespace chibios_rt;
  */
 #define usb1 (BaseSequentialStream*)&SDU1
 
+static const CANConfig cancfg1000 = {
+  CAN_MCR_DBF | CAN_MCR_ABOM | CAN_MCR_AWUM | CAN_MCR_TXFP,
+  CAN_BTR_SJW(0) |
+  CAN_BTR_BRP(2) | CAN_BTR_TS1(10) | CAN_BTR_TS2(1)
+};
 
+static const CANConfig cancfg500 = {
+  CAN_MCR_DBF | CAN_MCR_ABOM | CAN_MCR_AWUM | CAN_MCR_TXFP,
+  CAN_BTR_SJW(0) |
+  CAN_BTR_BRP(2) | CAN_BTR_TS1(10) | CAN_BTR_TS2(1)
+};
 
-class MainThread : public BaseStaticThread<2048> {
+class MainThread : public BaseStaticThread<16384> {
   public:
-    MainThread() : BaseStaticThread<2048>(){
+    MainThread() : BaseStaticThread<16384>(){
   
   }
   protected:
     void main(void) override {
       int32_t test1 = 34;
-      ByteBuffer rxUSB(100);
+      ByteBuffer rxUSB(128);
+      ObjectBuffer<CANRxFrame> rxCAN(32);
+      ObjectBuffer<CANTxFrame> txCAN(32);
+
+      /*--------- INDICATION -----------*/
+      STM32F405::Pins<tPinNames::totalNumber> leds;
+      leds.add(ledsBoard,tPinNames::totalNumber);
+      ledsUpdateThread ledsUpdateTh(leds);
+      ledsUpdateTh.start(NORMALPRIO + 20);
+      /*--------- CAN -------------*/
+      //canStart(&CAND1, &cancfg1000);
+      //canStart(&CAND2, &cancfg1000);
+
+      can1ReceiveThread can11111rx;
+      can11111rx.setPointers(&rxCAN, &leds);
+      //can1Rx.start(NORMALPRIO + 5);
+      /*--------- USB -----------*/
       sduObjectInit(&SDU1);
       sduStart(&SDU1, &serusbcfg);
 
@@ -41,16 +67,6 @@ class MainThread : public BaseStaticThread<2048> {
       BaseThread::sleep(TIME_MS2I(1000));
       usbStart(serusbcfg.usbp, &usbcfg);
       usbConnectBus(serusbcfg.usbp);
-
-      
-      
-      STM32F405::Pins<tPinNames::totalNumber> leds;
-      leds.add(ledsBoard,tPinNames::totalNumber);
-      ledsUpdateThread ledsUpdateTh(leds);
-
-      ledsUpdateTh.start(NORMALPRIO + 20);
-
-
 
       usbTransmitThread usbTransmit(&rxUSB, serusbcfg.usbp, leds);
       usbReceiveThread usbReceive(&rxUSB, serusbcfg.usbp, leds);
