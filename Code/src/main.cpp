@@ -35,17 +35,18 @@ static const CANConfig cancfg500 = {
   CAN_BTR_BRP(2) | CAN_BTR_TS1(10) | CAN_BTR_TS2(1)
 };
 
-class MainThread : public BaseStaticThread<16384> {
+class MainThread : public CustomizedThread<16384> {
   public:
-    MainThread() : BaseStaticThread<16384>(){
+    MainThread() : CustomizedThread<16384>(){
   
   }
   protected:
     void main(void) override {
       int32_t test1 = 34;
-      ByteBuffer rxUSB(128);
-      ObjectBuffer<CANRxFrame> rxCAN(32);
-      ObjectBuffer<CANTxFrame> txCAN(32);
+      ByteBuffer receivedUSB(128);
+      ByteBuffer toTransmitUSB(128);
+      ObjectBuffer<CANRxFrame> receivedCAN1(32);
+      ObjectBuffer<CANTxFrame> toTransmitCAN1(32);
 
       /*--------- INDICATION -----------*/
       STM32F405::Pins<tPinNames::totalNumber> leds;
@@ -53,11 +54,11 @@ class MainThread : public BaseStaticThread<16384> {
       ledsUpdateThread ledsUpdateTh(leds);
       ledsUpdateTh.start(NORMALPRIO + 20);
       /*--------- CAN -------------*/
-      //canStart(&CAND1, &cancfg1000);
-      //canStart(&CAND2, &cancfg1000);
+      canStart(&CAND1, &cancfg1000);
+      canStart(&CAND2, &cancfg1000);
 
-      //can1ReceiveThread can11111rx(&rxCAN, leds);
-      //can1Rx.start(NORMALPRIO + 5);
+      can1HandlerThread can1Handler(&receivedCAN1,&toTransmitCAN1, leds);
+      can1Handler.start(NORMALPRIO + 5);
       /*--------- USB -----------*/
       sduObjectInit(&SDU1);
       sduStart(&SDU1, &serusbcfg);
@@ -67,19 +68,19 @@ class MainThread : public BaseStaticThread<16384> {
       usbStart(serusbcfg.usbp, &usbcfg);
       usbConnectBus(serusbcfg.usbp);
 
-      usbTransmitThread usbTransmit(&rxUSB, serusbcfg.usbp, leds);
-      usbReceiveThread usbReceive(&rxUSB, serusbcfg.usbp, leds);
+      usbHandlerThread usbHandler(&receivedUSB,&toTransmitUSB,serusbcfg.usbp,leds);
 
-      usbTransmit.start(NORMALPRIO + 10);
-      usbReceive.start(NORMALPRIO + 10);
+      usbHandler.start(NORMALPRIO + 10);
 
       while(1){
         test1++;
         leds.on(tPinNames::ledGreen2,500,TIME_I2MS(System::getTime()));
         BaseThread::sleep(TIME_MS2I(1000));
+        stackUsage(remainingStack);
       }
     }
   private:
+    int remainingStack;
     void sleep_ms(sysinterval_t interval){
       sleep(TIME_MS2I(interval));
     }

@@ -17,7 +17,7 @@
 #include "usbcfg.h"
 #include "ringBuffer.hpp"
 #include "deviceSpecific.hpp"
-
+#include "slcan.hpp"
 
 namespace chibios_rt {
 template <int N>
@@ -25,10 +25,10 @@ class CustomizedThread : public BaseThread {
 protected:
   THD_WORKING_AREA(wa, N);
 
-  void stackUsage(){
+  void stackUsage(int& remainingStack){
     // calculate real size for stack
     stackSize = sizeof(wa) - PORT_WA_SIZE(0);
-    uint32_t limit = stackSize;
+    int limit = stackSize;
     if (limit <= 0)
       limit = 4096;
     thread_t *th = chThdGetSelfX();
@@ -41,6 +41,7 @@ protected:
         break;
       stackFree += sizeof(uint32_t);
     }
+    remainingStack = stackFree;
   }
 public:
     void sleep_ms(sysinterval_t interval){
@@ -56,45 +57,29 @@ private:
   int stackFree;
 };
 
-class usbTransmitThread : public CustomizedThread<128>{
+class usbHandlerThread : public CustomizedThread<512>{
 public:
-  usbTransmitThread(
-    ByteBuffer* rxUSB, 
+  usbHandlerThread(
+    ByteBuffer* receivedUSB, 
+    ByteBuffer* transmitUSB,
     USBDriver* drvUSB, 
     STM32F405::Pins<6>& leds) : 
-        CustomizedThread<128>(), 
-        mRxUSB(rxUSB),
+        CustomizedThread<512>(), 
+        mReceivedUSB(receivedUSB),
+        mToTransmitUSB(transmitUSB),
         mDrvUsb(drvUSB),
         mLeds(leds){
-  
   }
 protected:
     void main(void) override;
 private:
-  ByteBuffer* mRxUSB;
+  int remainingStack;
+  ByteBuffer* mReceivedUSB; 
+  ByteBuffer* mToTransmitUSB;
   USBDriver* mDrvUsb;
   STM32F405::Pins<6>& mLeds;
 };
 
-class usbReceiveThread : public CustomizedThread<512>{
-public:
-  usbReceiveThread(
-    ByteBuffer* rxUSB, 
-    USBDriver* drvUSB, 
-    STM32F405::Pins<6>& leds) : 
-        CustomizedThread<512>(), 
-        mRxUSB(rxUSB),
-        mDrvUsb(drvUSB),
-        mLeds(leds){
-  
-  }
-protected:
-    void main(void) override;
-private:
-  ByteBuffer* mRxUSB;
-  USBDriver* mDrvUsb;
-  STM32F405::Pins<6>& mLeds;
-};
 
 class ledsUpdateThread : public CustomizedThread<512>{
 public:
@@ -107,42 +92,50 @@ public:
 protected:
     void main(void) override;
 private:
+    int remainingStack;
     STM32F405::Pins<6>& mLeds;
 };
 
-
-class can1ReceiveThread : public CustomizedThread<512>{
+class can1HandlerThread : public CustomizedThread<512>{
 public:
-    can1ReceiveThread(
-      ObjectBuffer<CANRxFrame>* rxCAN,
+    can1HandlerThread(
+      ObjectBuffer<CANRxFrame>* receivedCAN1,
+      ObjectBuffer<CANTxFrame>* toTransmitCAN1,
       STM32F405::Pins<6>& leds) : 
         CustomizedThread<512>(), 
-        mRxCAN(rxCAN),
+        mReceivedCAN1(receivedCAN1),
+        mToTransmitCAN1(toTransmitCAN1),
         mLeds(leds){
   
     }
 protected:
     void main(void) override;
 private:
-    ObjectBuffer<CANRxFrame>* mRxCAN;
+    int remainingStack;
+    ObjectBuffer<CANRxFrame>* mReceivedCAN1;
+    ObjectBuffer<CANTxFrame>* mToTransmitCAN1;
     STM32F405::Pins<6>& mLeds;
 };
 
-class can1TransmitThread : public CustomizedThread<512>{
+class slCanHandlerThread : public CustomizedThread<512>{
 public:
-    can1TransmitThread(
-      ObjectBuffer<CANTxFrame>* txCAN,
-      STM32F405::Pins<6>& leds) : 
+    slCanHandlerThread(
+      ObjectBuffer<CANRxFrame>* receivedCAN1,
+      ByteBuffer* transmitUSB) : 
         CustomizedThread<512>(), 
-        mTxCAN(txCAN),
-        mLeds(leds){
+        mReceivedCAN1(receivedCAN1),
+        mToTransmitUSB(transmitUSB){
   
     }
 protected:
     void main(void) override;
 private:
-    ObjectBuffer<CANTxFrame>* mTxCAN;
-    STM32F405::Pins<6>& mLeds;
+    int remainingStack;
+    ObjectBuffer<CANRxFrame>* mReceivedCAN1;
+    ByteBuffer* mToTransmitUSB;
+
 };
+
+
 
 }

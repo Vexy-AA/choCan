@@ -265,7 +265,18 @@ public:
     bool update(const T &object) {
         return buffer->update((uint8_t*)&object, sizeof(T));
     }
-
+    void unblock(void){
+        if (buffer == nullptr) {
+            return;
+        }
+        buffer->unblock();
+    };
+    bool block(void){
+        if (buffer == nullptr) {
+            return false;
+        }
+        return buffer->block();
+    };
 private:
     ByteBuffer *buffer = nullptr;
     bool external_buf = true;

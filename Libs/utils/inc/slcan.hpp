@@ -5,11 +5,15 @@
 #include "stdint.h"
 #include "ringBuffer.hpp"
 #include <stdio.h>
-#include "stm32f4xx_hal.h"
-#include "usbd_cdc_if.h"
-#include "stm32f4xx_hal_can.h"
+//#include "stm32f4xx_hal.h"
+//#include "usbd_cdc_if.h"
+//#include "stm32f4xx_hal_can.h"
+
 #include <string.h>
 #include "bxcan.hpp"
+
+#define HAL_CANFD_SUPPORTED FALSE
+
 #define SLCAN_BUFFER_SIZE 200
 #define SLCAN_RX_QUEUE_SIZE 64
 
@@ -242,11 +246,11 @@ public:
     };
 
     static uint64_t native_micros64(){
-        uint32_t ms = HAL_GetTick();
+        uint32_t ms = chVTGetSystemTime();
         uint32_t us = SysTick->VAL;
 
-        if (ms != HAL_GetTick()){
-            ms = HAL_GetTick();
+        if (ms != chVTGetSystemTime()){
+            ms = chVTGetSystemTime();
             us = SysTick->VAL;
         }
         return ms * 1000 - us / ((SysTick->LOAD + 1) / 1000);
