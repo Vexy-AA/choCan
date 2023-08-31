@@ -11,7 +11,8 @@
 
 #include <string.h>
 #include "bxcan.hpp"
-
+#include "ch.hpp"
+#include "hal.h"
 #define HAL_CANFD_SUPPORTED FALSE
 
 #define SLCAN_BUFFER_SIZE 200
@@ -181,10 +182,9 @@ public:
 
     int16_t receive(CANFrame& out_frame, uint64_t& rx_time,
                     CanIOFlags& out_flags) ;
-    int16_t storeSerialMessage(uint8_t* Buf, uint32_t *Len);
+    int16_t storeSerialMessage(const uint8_t* Buf, uint32_t *Len);
     int16_t storeCanMessage(uint8_t fifo_index, uint64_t timestamp_us);
-    int16_t sendCan();
-
+    int16_t storeCanMessage(CANRxFrame& inFrame);
 
     enum OperatingMode {
         PassThroughMode,
@@ -246,15 +246,24 @@ public:
     };
 
     static uint64_t native_micros64(){
-        uint32_t ms = chVTGetSystemTime();
+        uint32_t ms = TIME_I2MS(chVTGetSystemTime());
         uint32_t us = SysTick->VAL;
 
-        if (ms != chVTGetSystemTime()){
-            ms = chVTGetSystemTime();
+        if (ms != TIME_I2MS(chVTGetSystemTime())){
+            ms = TIME_I2MS(chVTGetSystemTime());
             us = SysTick->VAL;
         }
         return ms * 1000 - us / ((SysTick->LOAD + 1) / 1000);
     }
+    chibios_rt::Mutex* getRxMutex(){
+        return rx_queue_.mutex;
+    }
+    chibios_rt::Mutex* getTxMutex(){
+        return tx_queue_.mutex;
+    }
+    int16_t sendUsb();
+    int16_t serialToCan();
+    int16_t sendCan();
 private:    
     static constexpr bxcan::CanType* const cans_[1] = {reinterpret_cast<bxcan::CanType*>(uintptr_t(CAN1_BASE))};
     int16_t canFrameSendBySerial(const CANFrame& frame, uint64_t timestamp_usec);

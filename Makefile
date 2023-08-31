@@ -133,8 +133,8 @@ CSRC = $(ALLCSRC) \
 CPPSRC = $(ALLCPPSRC) \
          Code/src/main.cpp \
          Libs/utils/src/ringBuffer.cpp  \
-         Code/src/threads.cpp
-         #Libs/utils/src/slcan.cpp 
+         Code/src/threads.cpp \
+         Libs/utils/src/slcan.cpp 
     
 
 # List ASM source files here.

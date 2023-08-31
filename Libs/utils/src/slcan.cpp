@@ -2,11 +2,11 @@
 
 
 
-extern USBD_HandleTypeDef hUsbDeviceFS;
-extern CAN_HandleTypeDef hcan;
-
+//extern USBD_HandleTypeDef hUsbDeviceFS;
+//extern CAN_HandleTypeDef hcan;
+extern SerialUSBDriver SDU1;
 ////////Helper Methods//////////
-
+#define MIN(a, b)  (((a) < (b)) ? (a) : (b))
 static bool hex2nibble_error;
 
 static uint8_t nibble2hex(uint8_t x)
@@ -416,7 +416,7 @@ int16_t SLCAN::CANIface::receive(CANFrame& out_frame, uint64_t& rx_time,
         out_frame = frm.frame;
         rx_time = frm.timestamp_us;
         out_flags = frm.flags;
-        _last_had_activity = HAL_GetTick();
+        _last_had_activity = TIME_I2MS(chVTGetSystemTime());
         // Also send this frame over can_iface when in passthrough mode,
         // We just push this frame without caring for priority etc
         bool write = true;
@@ -618,16 +618,17 @@ int16_t SLCAN::CANIface::canFrameSendByCAN(const CANFrame& frame, uint64_t tx_de
     return 1;
 }
 int8_t SLCAN::CANIface::usbFree(){
-    if (hUsbDeviceFS.pClassData == nullptr) return -1;
+    /* if (hUsbDeviceFS.pClassData == nullptr) return -1;
     USBD_CDC_HandleTypeDef   *hcdc = (USBD_CDC_HandleTypeDef *) hUsbDeviceFS.pClassData;
-    if (hcdc->TxState) return 0;
+    if (hcdc->TxState) return 0; */
     return 1;
 }
 int8_t SLCAN::CANIface::sendSerialByUSB(uint8_t  *resp_bytes, uint16_t resp_len){
-    if (hUsbDeviceFS.pClassData == nullptr) return -1;
+    chnWriteTimeout(&SDU1, resp_bytes, resp_len, TIME_IMMEDIATE);
+    /* if (hUsbDeviceFS.pClassData == nullptr) return -1;
     
     USBD_CDC_SetTxBuffer(&hUsbDeviceFS, resp_bytes, resp_len);
-    USBD_CDC_TransmitPacket(&hUsbDeviceFS);
+    USBD_CDC_TransmitPacket(&hUsbDeviceFS); */
     return 0;
 }
 /// RECEIVE
@@ -635,9 +636,50 @@ int8_t SLCAN::CANIface::sendSerialByUSB(uint8_t  *resp_bytes, uint16_t resp_len)
 /// @param Buf 
 /// @param Len 
 /// @return 
-int16_t SLCAN::CANIface::storeSerialMessage(uint8_t* Buf, uint32_t *Len){
-    rxSerial.write(Buf, *Len);
-    return 1;
+int16_t SLCAN::CANIface::storeSerialMessage(const uint8_t* Buf, uint32_t *Len){
+    if (!(*Len)) return 0;
+    if (rxSerial.mutex.tryLock()){
+        rxSerial.write(Buf, *Len);
+        rxSerial.mutex.unlock();
+        return 1;
+    }
+    return 0;
+}
+//
+//
+int16_t SLCAN::CANIface::storeCanMessage(CANRxFrame& canRxFrame){
+    CANFrame &frame = isr_rx_frame;
+
+    if (canRxFrame.IDE == 0) {
+        frame.id = CANFrame::MaskStdID & canRxFrame.SID;
+    } else {
+        frame.id = CANFrame::MaskExtID & canRxFrame.EID;
+        frame.id |= CANFrame::FlagEFF;
+    }
+    if (canRxFrame.RTR != 0) {
+        frame.id |= CANFrame::FlagRTR;
+    }
+    frame.dlc = canRxFrame.DLC & 15;
+    
+    frame.data_32[0] = canRxFrame.data32[0];
+    frame.data_32[1] = canRxFrame.data32[1];
+
+
+    CanRxItem &rx_item = isr_rx_item;
+    rx_item.frame = frame;
+    rx_item.timestamp_us = canRxFrame.TIME;
+    rx_item.flags = 0;
+
+    if (add_to_rx_queue(rx_item)) {
+        PERF_STATS(stats.rx_received);
+    } else {
+        PERF_STATS(stats.rx_overflow);
+    }
+
+    had_activity_ = true;
+
+    //pollErrorFlagsFromISR();
+    return 0;
 }
 /// @brief Receive can frame interrupt 
 /// @param fifo_index 
@@ -706,3 +748,73 @@ int16_t SLCAN::CANIface::storeCanMessage(uint8_t fifo_index, uint64_t timestamp_
     //pollErrorFlagsFromISR();
     return 0;
 }
+
+int16_t SLCAN::CANIface::sendUsb(){
+    CanRxItem rx_item;
+    CANFrame out_frame;
+    if (!rx_queue_.mutex->tryLock()) return 0;
+    if (!rx_queue_.pop(rx_item)) {
+        rx_queue_.mutex->unlock();
+        return 0;
+    }else{
+        out_frame    = rx_item.frame;
+        canFrameSendBySerial(out_frame, native_micros64()); \
+        rx_queue_.mutex->unlock();
+        return 1;
+    }
+    return 0;
+}
+
+int16_t SLCAN::CANIface::serialToCan(){
+    if (!rxSerial.mutex.tryLock()) return 0;
+    int32_t nBytes = rxSerial.available();
+    // flush bytes from port
+    while (nBytes--) {
+        uint8_t b;
+        rxSerial.read_byte(&b);
+        addByte(b);
+        if (!tx_queue_.space()) {
+            break;
+        }
+    }
+    rxSerial.mutex.unlock();
+    return 1;
+}
+
+
+int16_t SLCAN::CANIface::sendCan(){
+    if (!tx_queue_.mutex->tryLock()) return 0;
+    CANFrame out_frame;
+    CanIOFlags out_flags;
+    if (tx_queue_.available()) {
+        // if we already have something in buffer transmit it
+        CanRxItem frm;
+        if (!tx_queue_.peek(frm)) {
+            tx_queue_.mutex->unlock();
+            return 0;
+        }
+        out_frame = frm.frame;
+        out_flags = frm.flags;
+        _last_had_activity = TIME_I2MS(chVTGetSystemTime());
+        // Also send this frame over can_iface when in passthrough mode,
+        // We just push this frame without caring for priority etc
+        bool write = true;
+        //_can_iface->select(read, write, &out_frame, 0); // select without blocking
+
+
+        if (write && canFrameSendByCAN(out_frame, native_micros64() + 100000, out_flags) == 1) {
+                tx_queue_.pop();
+                num_tries = 0;
+        } else if (num_tries > 8) {
+            tx_queue_.pop();
+            num_tries = 0;
+        } else {
+            num_tries++;
+        }
+        
+        return 1;
+    }
+    return 0;
+}
+
+

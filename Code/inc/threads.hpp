@@ -60,24 +60,29 @@ private:
 class usbHandlerThread : public CustomizedThread<512>{
 public:
   usbHandlerThread(
-    ByteBuffer* receivedUSB, 
+    Mutex* usbMutex,
     ByteBuffer* transmitUSB,
     USBDriver* drvUSB, 
+    SLCAN::CANIface* slCan,
     STM32F405::Pins<6>& leds) : 
-        CustomizedThread<512>(), 
-        mReceivedUSB(receivedUSB),
+        CustomizedThread<512>(),
+        mUsbMutex(usbMutex),
         mToTransmitUSB(transmitUSB),
         mDrvUsb(drvUSB),
+        mSlCan(slCan),
         mLeds(leds){
   }
 protected:
     void main(void) override;
 private:
   int remainingStack;
-  ByteBuffer* mReceivedUSB; 
+  Mutex* mUsbMutex;
   ByteBuffer* mToTransmitUSB;
   USBDriver* mDrvUsb;
+  SLCAN::CANIface* mSlCan;
   STM32F405::Pins<6>& mLeds;
+  uint32_t bytesReceived = 0;
+  uint8_t buf[100];
 };
 
 
@@ -99,12 +104,16 @@ private:
 class can1HandlerThread : public CustomizedThread<512>{
 public:
     can1HandlerThread(
+      Mutex* canMutex,
       ObjectBuffer<CANRxFrame>* receivedCAN1,
       ObjectBuffer<CANTxFrame>* toTransmitCAN1,
+      SLCAN::CANIface* slCan,
       STM32F405::Pins<6>& leds) : 
         CustomizedThread<512>(), 
+        mCanMutex(canMutex),
         mReceivedCAN1(receivedCAN1),
         mToTransmitCAN1(toTransmitCAN1),
+        mSlCan(slCan),
         mLeds(leds){
   
     }
@@ -112,27 +121,38 @@ protected:
     void main(void) override;
 private:
     int remainingStack;
+    Mutex* mCanMutex;
     ObjectBuffer<CANRxFrame>* mReceivedCAN1;
     ObjectBuffer<CANTxFrame>* mToTransmitCAN1;
+    SLCAN::CANIface* mSlCan;
     STM32F405::Pins<6>& mLeds;
 };
 
 class slCanHandlerThread : public CustomizedThread<512>{
 public:
     slCanHandlerThread(
+      Mutex* usbMutex,
+      Mutex* canMutex,
       ObjectBuffer<CANRxFrame>* receivedCAN1,
-      ByteBuffer* transmitUSB) : 
+      ByteBuffer* transmitUSB,
+      SLCAN::CANIface* slCan) : 
         CustomizedThread<512>(), 
+        mUsbMutex(usbMutex),
+        mCanMutex(canMutex),
         mReceivedCAN1(receivedCAN1),
-        mToTransmitUSB(transmitUSB){
+        mToTransmitUSB(transmitUSB),
+        mSlCan(slCan){
   
     }
 protected:
     void main(void) override;
 private:
     int remainingStack;
+    Mutex* mUsbMutex;
+    Mutex* mCanMutex;
     ObjectBuffer<CANRxFrame>* mReceivedCAN1;
     ByteBuffer* mToTransmitUSB;
+    SLCAN::CANIface* mSlCan;
 
 };
 

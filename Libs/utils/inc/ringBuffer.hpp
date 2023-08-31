@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <atomic>
+#include <ch.hpp>
 /*
  * Circular buffer of bytes.
  */
@@ -87,12 +88,10 @@ public:
      * Committer must inform how many bytes were actually written in 'len'.
      */
     bool commit(uint32_t len);
-    void unblock(void){locked = false;};
-    bool block(void){if (locked)return false; locked = true; return locked;};
+    chibios_rt::Mutex mutex;
 private:
     uint8_t *buf;
     uint32_t size;
-    bool locked = false;
     std::atomic<uint32_t> head{0}; // where to read data
     std::atomic<uint32_t> tail{0}; // where to write data
 
@@ -106,19 +105,21 @@ private:
 template <class T>
 class ObjectBuffer {
 public:
+    chibios_rt::Mutex* mutex; 
     ObjectBuffer(uint32_t _size = 0) {
         // we set size to 1 more than requested as the byte buffer
         // gives one less byte than requested. We round up to a full
         // multiple of the object size so that we always get aligned
         // elements, which makes the readptr() method possible
         buffer = new ByteBuffer(((_size+1) * sizeof(T)));
+        mutex = &buffer->mutex;
         external_buf = false;
     }
 
     ObjectBuffer(ByteBuffer *_buffer) :
     buffer(_buffer),
     external_buf(true)
-    {}
+    {mutex = &buffer->mutex;}
 
     ~ObjectBuffer(void) {
         if (!external_buf)
@@ -265,18 +266,6 @@ public:
     bool update(const T &object) {
         return buffer->update((uint8_t*)&object, sizeof(T));
     }
-    void unblock(void){
-        if (buffer == nullptr) {
-            return;
-        }
-        buffer->unblock();
-    };
-    bool block(void){
-        if (buffer == nullptr) {
-            return false;
-        }
-        return buffer->block();
-    };
 private:
     ByteBuffer *buffer = nullptr;
     bool external_buf = true;

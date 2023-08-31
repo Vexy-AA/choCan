@@ -43,11 +43,12 @@ class MainThread : public CustomizedThread<16384> {
   protected:
     void main(void) override {
       int32_t test1 = 34;
-      ByteBuffer receivedUSB(128);
+      Mutex usbMutex;
+      Mutex canMutex;
       ByteBuffer toTransmitUSB(128);
       ObjectBuffer<CANRxFrame> receivedCAN1(32);
       ObjectBuffer<CANTxFrame> toTransmitCAN1(32);
-
+      SLCAN::CANIface slCan;
       /*--------- INDICATION -----------*/
       STM32F405::Pins<tPinNames::totalNumber> leds;
       leds.add(ledsBoard,tPinNames::totalNumber);
@@ -57,8 +58,8 @@ class MainThread : public CustomizedThread<16384> {
       canStart(&CAND1, &cancfg1000);
       canStart(&CAND2, &cancfg1000);
 
-      can1HandlerThread can1Handler(&receivedCAN1,&toTransmitCAN1, leds);
-      can1Handler.start(NORMALPRIO + 5);
+      can1HandlerThread can1Handler(&canMutex,&receivedCAN1,&toTransmitCAN1,&slCan,leds);
+      can1Handler.start(NORMALPRIO + 9);
       /*--------- USB -----------*/
       sduObjectInit(&SDU1);
       sduStart(&SDU1, &serusbcfg);
@@ -68,10 +69,13 @@ class MainThread : public CustomizedThread<16384> {
       usbStart(serusbcfg.usbp, &usbcfg);
       usbConnectBus(serusbcfg.usbp);
 
-      usbHandlerThread usbHandler(&receivedUSB,&toTransmitUSB,serusbcfg.usbp,leds);
+      usbHandlerThread usbHandler(&usbMutex,&toTransmitUSB,serusbcfg.usbp,&slCan,leds);
 
       usbHandler.start(NORMALPRIO + 10);
 
+      slCanHandlerThread slCanHandler(&usbMutex,&canMutex,&receivedCAN1,&toTransmitUSB,&slCan);
+
+      slCanHandler.start(NORMALPRIO + 8);
       while(1){
         test1++;
         leds.on(tPinNames::ledGreen2,500,TIME_I2MS(System::getTime()));
