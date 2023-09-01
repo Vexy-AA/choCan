@@ -215,6 +215,15 @@ public:
             pin.toggle();
         }
     }
+    bool toggle(tPinNames id){
+        for (Pin& pin : mPins){
+            if (pin.getId() == static_cast<uint8_t>(id)){
+                pin.toggle();
+                return true;
+            }
+        }
+        return false;
+    }
     bool off(tPinNames id){
         for (Pin& pin : mPins){
             if (pin.getId() == static_cast<uint8_t>(id)){

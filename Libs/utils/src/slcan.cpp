@@ -624,7 +624,8 @@ int8_t SLCAN::CANIface::usbFree(){
     return 1;
 }
 int8_t SLCAN::CANIface::sendSerialByUSB(uint8_t  *resp_bytes, uint16_t resp_len){
-    chnWriteTimeout(&SDU1, resp_bytes, resp_len, TIME_IMMEDIATE);
+    txSerial.write(resp_bytes,resp_len);
+    //chnWriteTimeout(&SDU1, resp_bytes, resp_len, TIME_IMMEDIATE);
     /* if (hUsbDeviceFS.pClassData == nullptr) return -1;
     
     USBD_CDC_SetTxBuffer(&hUsbDeviceFS, resp_bytes, resp_len);
@@ -811,9 +812,10 @@ int16_t SLCAN::CANIface::sendCan(){
         } else {
             num_tries++;
         }
-        
+        tx_queue_.mutex->unlock();
         return 1;
     }
+    tx_queue_.mutex->unlock();
     return 0;
 }
 

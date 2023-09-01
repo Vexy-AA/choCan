@@ -151,7 +151,8 @@ public:
     CANIface():
         rx_queue_(HAL_CAN_RX_QUEUE_SIZE),
         tx_queue_(HAL_CAN_RX_QUEUE_SIZE),
-        rxSerial(100)
+        rxSerial(100),
+        txSerial(100)
     {
         rx_queue_.clear();
         tx_queue_.clear();
@@ -264,6 +265,9 @@ public:
     int16_t sendUsb();
     int16_t serialToCan();
     int16_t sendCan();
+    ByteBuffer* ptxSerial(){
+        return &txSerial;
+    }
 private:    
     static constexpr bxcan::CanType* const cans_[1] = {reinterpret_cast<bxcan::CanType*>(uintptr_t(CAN1_BASE))};
     int16_t canFrameSendBySerial(const CANFrame& frame, uint64_t timestamp_usec);
@@ -294,6 +298,7 @@ private:
     ObjectBuffer<CanRxItem> rx_queue_; // Parsed Rx Frame queue
     ObjectBuffer<CanRxItem> tx_queue_; // Parsed Rx Frame queue
     ByteBuffer rxSerial;
+    ByteBuffer txSerial;
     const uint32_t _serial_lock_key = 0x53494442; // Key used to lock UART port for use by slcan
 
    /*  AP_Int8 _slcan_can_port;

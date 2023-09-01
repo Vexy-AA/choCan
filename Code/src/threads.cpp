@@ -17,14 +17,19 @@ void usbHandlerThread::main(void){
   setName("usbHandler");
   while(true){
     if (mUsbMutex->tryLock()){
-      if (mToTransmitUSB->mutex.tryLock()){
+      if (mSlCan->ptxSerial()->available()){
+        chnWriteTimeout(&SDU1, mSlCan->ptxSerial()->readptr(bytesReceived), bytesReceived, TIME_IMMEDIATE);
+        mSlCan->ptxSerial()->clear();
+        mLeds.on(tPinNames::ledRed,1,TIME_I2MS(System::getTime()));
+      }
+      /* if (mToTransmitUSB->mutex.tryLock()){
         if (mToTransmitUSB->available()){
           chnWriteTimeout(&SDU1, mToTransmitUSB->readptr(bytesReceived), bytesReceived, TIME_IMMEDIATE);
           mToTransmitUSB->clear();
           mLeds.on(tPinNames::ledRed,1,TIME_I2MS(System::getTime()));
         }
         mToTransmitUSB->mutex.unlock();
-      }
+      } */
 
       bytesReceived = chnReadTimeout(&SDU1, buf, sizeof(buf),TIME_IMMEDIATE);
       if (bytesReceived){
@@ -80,15 +85,17 @@ void can1HandlerThread::main(void){
     stackUsage(remainingStack);
   }
 }
-
+thread_t *currtp2;
 void slCanHandlerThread::main(void){
+  thread_t *currtp = chThdGetSelfX();
+  currtp2 = currtp;
   setName("slCanThread");
 
   while(true){
     if (mUsbMutex->tryLock()){
-      while(mSlCan->sendUsb()){
-
-      }
+      /* while(mSlCan->sendUsb()){
+        mLeds.on(tPinNames::ledRed,1,TIME_I2MS(System::getTime()));
+      } */
       mSlCan->serialToCan();
       mUsbMutex->unlock();
     }
@@ -98,7 +105,8 @@ void slCanHandlerThread::main(void){
       mSlCan->sendCan();
       mCanMutex->unlock();
     }
-
+    sleep_ms(1);
+    stackUsage(remainingStack);
   }
 }
 }

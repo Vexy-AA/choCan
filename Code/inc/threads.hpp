@@ -135,13 +135,15 @@ public:
       Mutex* canMutex,
       ObjectBuffer<CANRxFrame>* receivedCAN1,
       ByteBuffer* transmitUSB,
-      SLCAN::CANIface* slCan) : 
+      SLCAN::CANIface* slCan,
+      STM32F405::Pins<6>& leds) : 
         CustomizedThread<512>(), 
         mUsbMutex(usbMutex),
         mCanMutex(canMutex),
         mReceivedCAN1(receivedCAN1),
         mToTransmitUSB(transmitUSB),
-        mSlCan(slCan){
+        mSlCan(slCan),
+        mLeds(leds){
   
     }
 protected:
@@ -153,6 +155,7 @@ private:
     ObjectBuffer<CANRxFrame>* mReceivedCAN1;
     ByteBuffer* mToTransmitUSB;
     SLCAN::CANIface* mSlCan;
+    STM32F405::Pins<6>& mLeds;
 
 };
 

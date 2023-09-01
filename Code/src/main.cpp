@@ -73,7 +73,7 @@ class MainThread : public CustomizedThread<16384> {
 
       usbHandler.start(NORMALPRIO + 10);
 
-      slCanHandlerThread slCanHandler(&usbMutex,&canMutex,&receivedCAN1,&toTransmitUSB,&slCan);
+      slCanHandlerThread slCanHandler(&usbMutex,&canMutex,&receivedCAN1,&toTransmitUSB,&slCan,leds);
 
       slCanHandler.start(NORMALPRIO + 8);
       while(1){
@@ -115,8 +115,8 @@ int main(void) {
 
   while (true) {
     testGG++;
-   
-    BaseThread::sleep(TIME_MS2I(1000));
+    //sleep(TIME_MS2I(1000));
+    //BaseThread::sleep(TIME_MS2I(1000));
   }
 
   return 0;
