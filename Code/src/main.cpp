@@ -53,13 +53,13 @@ class MainThread : public CustomizedThread<16384> {
       STM32F405::Pins<tPinNames::totalNumber> leds;
       leds.add(ledsBoard,tPinNames::totalNumber);
       ledsUpdateThread ledsUpdateTh(leds);
-      ledsUpdateTh.start(NORMALPRIO + 20);
+      ledsUpdateTh.start(NORMALPRIO + 1);
       /*--------- CAN -------------*/
       canStart(&CAND1, &cancfg1000);
       canStart(&CAND2, &cancfg1000);
 
       can1HandlerThread can1Handler(&canMutex,&receivedCAN1,&toTransmitCAN1,&slCan,leds);
-      can1Handler.start(NORMALPRIO + 10);
+      can1Handler.start(NORMALPRIO + 30);
       /*--------- USB -----------*/
       sduObjectInit(&SDU1);
       sduStart(&SDU1, &serusbcfg);
@@ -73,8 +73,10 @@ class MainThread : public CustomizedThread<16384> {
 
       usbHandler.start(NORMALPRIO + 15);
 
-      //slCanHandlerThread slCanHandler(&usbMutex,&canMutex,&receivedCAN1,&toTransmitUSB,&slCan,leds);
 
+
+
+      slCanHandlerThread slCanHandler(&usbMutex,&canMutex,&receivedCAN1,&toTransmitUSB,&slCan,leds);
       //slCanHandler.start(NORMALPRIO + 10);
       while(1){
         test1++;

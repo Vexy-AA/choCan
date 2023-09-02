@@ -70,22 +70,22 @@ void can1HandlerThread::main(void){
         mToTransmitCAN1->mutex->unlock();
       } */
 
-      if (chEvtWaitAnyTimeout(ALL_EVENTS, TIME_IMMEDIATE) != 0){
-        while (canReceive(&CAND1, CAN_ANY_MAILBOX, &canRxFrame, TIME_IMMEDIATE) == MSG_OK){
+      //if (chEvtWaitAnyTimeout(ALL_EVENTS, TIME_IMMEDIATE) != 0)
+      {
+        while(canReceive(&CAND1, CAN_ANY_MAILBOX, &canRxFrame, TIME_IMMEDIATE) == MSG_OK){
           mReceivedCAN1->push(canRxFrame);
         }
       }
+      while(mSlCan->sendCan()){
+        mLeds.on(tPinNames::ledBlue,1,TIME_I2MS(System::getTime()));
+      }
+
       mCanMutex->unlock();
     }
 
     if (mSlCan->getRxMutex()->tryLock()){
-      if(mReceivedCAN1->pop(canRxFrame)){
+      while(mReceivedCAN1->pop(canRxFrame)){
         mSlCan->storeCanMessage(canRxFrame);
-        mSlCan->getRxMutex()->unlock();
-        while(true){
-          sleep_ms(1);
-    stackUsage(remainingStack);
-        }
         mLeds.on(tPinNames::ledWhite,1,TIME_I2MS(System::getTime()));
       }
       mSlCan->getRxMutex()->unlock();
@@ -98,15 +98,7 @@ void slCanHandlerThread::main(void){
   setName("slCanThread");
 
   while(true){
-    /* while(mSlCan->sendUsb()){
-    }
-    mSlCan->serialToCan(); */
 
-    /* if (mCanMutex->tryLock()){
-      if (mSlCan->sendCan())
-        mLeds.on(tPinNames::ledBlue,1,TIME_I2MS(System::getTime()));
-      mCanMutex->unlock();
-    } */
     sleep_ms(1);
     stackUsage(remainingStack);
   }

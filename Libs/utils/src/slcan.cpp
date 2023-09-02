@@ -753,14 +753,14 @@ int16_t SLCAN::CANIface::storeCanMessage(uint8_t fifo_index, uint64_t timestamp_
 int16_t SLCAN::CANIface::sendUsb(){
     CanRxItem rx_item;
     CANFrame out_frame;
-    //if (!rx_queue_.mutex->tryLock()) return 0;
-    if (!rx_queue_.peek(rx_item)) {
-        //rx_queue_.mutex->unlock();
+    if (!rx_queue_.mutex->tryLock()) return 0;
+    if (!rx_queue_.pop(rx_item)) {
+        rx_queue_.mutex->unlock();
         return 0;
     }else{
         out_frame    = rx_item.frame;
         canFrameSendBySerial(out_frame, native_micros64()); \
-        //rx_queue_.mutex->unlock();
+        rx_queue_.mutex->unlock();
         return 1;
     }
     return 0;

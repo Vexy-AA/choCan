@@ -101,7 +101,7 @@ private:
     STM32F405::Pins<6>& mLeds;
 };
 
-class can1HandlerThread : public CustomizedThread<256>{
+class can1HandlerThread : public CustomizedThread<1024>{
 public:
     can1HandlerThread(
       Mutex* canMutex,
@@ -109,7 +109,7 @@ public:
       ObjectBuffer<CANTxFrame>* toTransmitCAN1,
       SLCAN::CANIface* slCan,
       STM32F405::Pins<6>& leds) : 
-        CustomizedThread<256>(), 
+        CustomizedThread<1024>(),
         mCanMutex(canMutex),
         mReceivedCAN1(receivedCAN1),
         mToTransmitCAN1(toTransmitCAN1),
