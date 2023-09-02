@@ -15,7 +15,7 @@
 #include "hal.h"
 #define HAL_CANFD_SUPPORTED FALSE
 
-#define SLCAN_BUFFER_SIZE 200
+#define SLCAN_BUFFER_SIZE 512
 #define SLCAN_RX_QUEUE_SIZE 64
 
 #ifndef HAL_CAN_RX_QUEUE_SIZE
@@ -151,8 +151,8 @@ public:
     CANIface():
         rx_queue_(HAL_CAN_RX_QUEUE_SIZE),
         tx_queue_(HAL_CAN_RX_QUEUE_SIZE),
-        rxSerial(100),
-        txSerial(100)
+        rxSerial(1024),
+        txSerial(1024)
     {
         rx_queue_.clear();
         tx_queue_.clear();

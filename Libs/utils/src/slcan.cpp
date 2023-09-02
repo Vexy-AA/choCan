@@ -624,8 +624,8 @@ int8_t SLCAN::CANIface::usbFree(){
     return 1;
 }
 int8_t SLCAN::CANIface::sendSerialByUSB(uint8_t  *resp_bytes, uint16_t resp_len){
-    txSerial.write(resp_bytes,resp_len);
-    //chnWriteTimeout(&SDU1, resp_bytes, resp_len, TIME_IMMEDIATE);
+    //txSerial.write(resp_bytes,resp_len);
+    chnWriteTimeout(&SDU1, resp_bytes, resp_len, TIME_IMMEDIATE);
     /* if (hUsbDeviceFS.pClassData == nullptr) return -1;
     
     USBD_CDC_SetTxBuffer(&hUsbDeviceFS, resp_bytes, resp_len);
@@ -753,14 +753,14 @@ int16_t SLCAN::CANIface::storeCanMessage(uint8_t fifo_index, uint64_t timestamp_
 int16_t SLCAN::CANIface::sendUsb(){
     CanRxItem rx_item;
     CANFrame out_frame;
-    if (!rx_queue_.mutex->tryLock()) return 0;
-    if (!rx_queue_.pop(rx_item)) {
-        rx_queue_.mutex->unlock();
+    //if (!rx_queue_.mutex->tryLock()) return 0;
+    if (!rx_queue_.peek(rx_item)) {
+        //rx_queue_.mutex->unlock();
         return 0;
     }else{
         out_frame    = rx_item.frame;
         canFrameSendBySerial(out_frame, native_micros64()); \
-        rx_queue_.mutex->unlock();
+        //rx_queue_.mutex->unlock();
         return 1;
     }
     return 0;

@@ -45,8 +45,8 @@ class MainThread : public CustomizedThread<16384> {
       int32_t test1 = 34;
       Mutex usbMutex;
       Mutex canMutex;
-      ByteBuffer toTransmitUSB(128);
-      ObjectBuffer<CANRxFrame> receivedCAN1(32);
+      ByteBuffer toTransmitUSB(64);
+      ObjectBuffer<CANRxFrame> receivedCAN1(256);
       ObjectBuffer<CANTxFrame> toTransmitCAN1(32);
       SLCAN::CANIface slCan;
       /*--------- INDICATION -----------*/
@@ -59,7 +59,7 @@ class MainThread : public CustomizedThread<16384> {
       canStart(&CAND2, &cancfg1000);
 
       can1HandlerThread can1Handler(&canMutex,&receivedCAN1,&toTransmitCAN1,&slCan,leds);
-      can1Handler.start(NORMALPRIO + 9);
+      can1Handler.start(NORMALPRIO + 10);
       /*--------- USB -----------*/
       sduObjectInit(&SDU1);
       sduStart(&SDU1, &serusbcfg);
@@ -71,11 +71,11 @@ class MainThread : public CustomizedThread<16384> {
 
       usbHandlerThread usbHandler(&usbMutex,&toTransmitUSB,serusbcfg.usbp,&slCan,leds);
 
-      usbHandler.start(NORMALPRIO + 10);
+      usbHandler.start(NORMALPRIO + 15);
 
-      slCanHandlerThread slCanHandler(&usbMutex,&canMutex,&receivedCAN1,&toTransmitUSB,&slCan,leds);
+      //slCanHandlerThread slCanHandler(&usbMutex,&canMutex,&receivedCAN1,&toTransmitUSB,&slCan,leds);
 
-      slCanHandler.start(NORMALPRIO + 8);
+      //slCanHandler.start(NORMALPRIO + 10);
       while(1){
         test1++;
         leds.on(tPinNames::ledGreen2,500,TIME_I2MS(System::getTime()));
@@ -114,7 +114,7 @@ int main(void) {
   mainThread.start(NORMALPRIO + 1);
 
   while (true) {
-    testGG++;
+     testGG++;
     //sleep(TIME_MS2I(1000));
     //BaseThread::sleep(TIME_MS2I(1000));
   }

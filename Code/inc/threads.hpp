@@ -57,7 +57,7 @@ private:
   int stackFree;
 };
 
-class usbHandlerThread : public CustomizedThread<512>{
+class usbHandlerThread : public CustomizedThread<2048>{
 public:
   usbHandlerThread(
     Mutex* usbMutex,
@@ -65,7 +65,7 @@ public:
     USBDriver* drvUSB, 
     SLCAN::CANIface* slCan,
     STM32F405::Pins<6>& leds) : 
-        CustomizedThread<512>(),
+        CustomizedThread<2048>(),
         mUsbMutex(usbMutex),
         mToTransmitUSB(transmitUSB),
         mDrvUsb(drvUSB),
@@ -86,11 +86,11 @@ private:
 };
 
 
-class ledsUpdateThread : public CustomizedThread<512>{
+class ledsUpdateThread : public CustomizedThread<256>{
 public:
     ledsUpdateThread(
       STM32F405::Pins<6>& leds) : 
-        CustomizedThread<512>(), 
+        CustomizedThread<256>(), 
         mLeds(leds){
   
     }
@@ -101,7 +101,7 @@ private:
     STM32F405::Pins<6>& mLeds;
 };
 
-class can1HandlerThread : public CustomizedThread<512>{
+class can1HandlerThread : public CustomizedThread<256>{
 public:
     can1HandlerThread(
       Mutex* canMutex,
@@ -109,7 +109,7 @@ public:
       ObjectBuffer<CANTxFrame>* toTransmitCAN1,
       SLCAN::CANIface* slCan,
       STM32F405::Pins<6>& leds) : 
-        CustomizedThread<512>(), 
+        CustomizedThread<256>(), 
         mCanMutex(canMutex),
         mReceivedCAN1(receivedCAN1),
         mToTransmitCAN1(toTransmitCAN1),
@@ -128,7 +128,7 @@ private:
     STM32F405::Pins<6>& mLeds;
 };
 
-class slCanHandlerThread : public CustomizedThread<512>{
+class slCanHandlerThread : public CustomizedThread<2048>{
 public:
     slCanHandlerThread(
       Mutex* usbMutex,
@@ -137,7 +137,7 @@ public:
       ByteBuffer* transmitUSB,
       SLCAN::CANIface* slCan,
       STM32F405::Pins<6>& leds) : 
-        CustomizedThread<512>(), 
+        CustomizedThread<2048>(), 
         mUsbMutex(usbMutex),
         mCanMutex(canMutex),
         mReceivedCAN1(receivedCAN1),
